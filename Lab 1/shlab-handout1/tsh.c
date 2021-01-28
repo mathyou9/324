@@ -138,6 +138,9 @@ void eval(char *cmdline)
         // dont open pipe yet
         // Create variable int for read end pipe
         int comIndex = 0;
+        pid_t pid = 0;
+        pid_t groupID = 0;
+
         while (comIndex < comNum)
         {
             //open pipe
@@ -150,26 +153,29 @@ void eval(char *cmdline)
                 indexO++;
                 pIndex++;
             }
-            pid_t pid;
+            tempArguments[pIndex] = (char *)0;
+            //printf("%s", tempArguments[0]);
+            //printf("%s", arguments[stdout_redir[comIndex]]);
             if ((pid = fork()) < 0)
             {
                 printf("fork error");
             }
-            printf("im here");
+            // printf("im here");
             if (pid == 0)
             {
-
                 if (stdout_redir[comIndex] > 0)
                 {
-                    printf("%s", arguments[stdin_redir[comIndex]]);
-                    FILE *file = fopen(arguments[stdin_redir[comIndex]], "w");
+                    // printf("%s", arguments[stdin_redir[comIndex]]);
+                    FILE *file;
+                    file = fopen(arguments[stdout_redir[comIndex]], "w");
                     dup2(fileno(file), STDOUT_FILENO);
                     fclose(file);
                 }
                 if (stdin_redir[comIndex] > 0)
                 {
-                    printf("%s", arguments[stdin_redir[comIndex]]);
-                    FILE *file = fopen(arguments[stdin_redir[comIndex]], "r");
+                    // printf("%s", arguments[stdin_redir[comIndex]]);
+                    FILE *file;
+                    file = fopen(arguments[stdin_redir[comIndex]], "r");
                     dup2(fileno(file), STDIN_FILENO);
                     fclose(file);
                 }
@@ -178,48 +184,20 @@ void eval(char *cmdline)
             }
             else
             {
-                waitpid(pid, 0, 0);
+                if (comIndex == 0)
+                {
+                    groupID = pid;
+                }
+                setpgid(pid, groupID);
+                //waitpid(pid, 0, 0);
             }
+            while (waitpid(-1, 0, WNOHANG))
+            {
+            };
             comIndex++;
         }
-        // printf("passed builtin");
-        // pid_t pid;
-        // if ((pid = fork()) < 0)
-        // {
-        //     printf("fork error");
-        // }
-        // printf("Pid %d", pid);
-        // if (pid == 0)
-        // {
-        //     //printf("%s", arguments);
-        //     printf("pid == 0");
-        //     //FILE *fdo = fdopen(p[1], "w");
-        //     //dup2(1, 1);
-
-        //     for (int i = 0; i < comNum; i++)
-        //     {
-        //         printf("%s", arguments[stdin_redir[i]]);
-        //         if (stdout_redir[i] > 0)
-        //         {
-        //             FILE *file = fopen(arguments[stdin_redir[i]], "w");
-        //             dup2(fileno(file), STDOUT_FILENO);
-        //             fclose(file);
-        //         }
-        //         if (stdin_redir[i] > 0)
-        //         {
-        //             FILE *file = fopen(arguments[stdin_redir[i]], "r");
-        //             dup2(fileno(file), STDIN_FILENO);
-        //             fclose(file);
-        //         }
-
-        //         execve(arguments[commands[i]], arguments, environ);
-        //     }
-        //     exit(0);
-        // }
-        // else
-        // {
-        //     setpgid(pid, 0);
-        // }
+        //flip other waitpid
+        waitpid(pid, 0, 0);
     }
     return;
 }
