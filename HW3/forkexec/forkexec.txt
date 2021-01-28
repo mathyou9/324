@@ -1,0 +1,148 @@
+HW3 – fork/exec
+
+1)
+the program prints a statement saying which processID is sleeping then sleeps it for 30 seconds, if there isnt any arguments given the program exits. If there is an argument it executes the program with the pathname provided as an argument.
+
+2)
+if there is an argument and there was an error executing the argument. Does NOT return on success.
+
+3)
+Input:	./exec /bin/cat
+Output:	Program "./exec" has pid 2223. Sleeping.
+	Running exec of "/bin/cat"
+Input:	a
+Output:	a
+Input:	b
+Output:	b
+
+4)
+Input:	Tmux1./exec /bin/cat
+Tmux2:	ps -p 21587 -o user= -o pid= -o ppid= -o state= -o ucmd=
+Output: mathyou9 23006 19369 S exec
+Tmux2:	ps -p 21587 -o user= -o pid= -o ppid= -o state= -o ucmd=
+Output: mathyou9 23006 19369 S cat
+
+5)
+Similarities: everything but the CMD
+Differences: just the CMD field because its a different process running
+
+6)
+Input:	Tmux1./exec vim
+Tmux2:	ps -p 23368 -o user= -o pid= -o ppid= -o state= -o ucmd=
+Output: mathyou9 23006 19369 S exec
+Tmux2:	ps -p 23368 -o user= -o pid= -o ppid= -o state= -o ucmd=
+Output:	(blank)
+The program finished so there wasnt an output for the process id
+
+7)
+line 8 prints pid
+line 10 creates a new process and stores the pid into the variable pid unless it cant then exits with an error code
+line 17 prints pid
+line 18 sleeps for 30 seconds
+prints section b if pid == 0 and then exits after sleeping for 30 seconds
+or prints section c after sleeping for 60 seconds and then exits
+lines 45 and 46 will never be reached
+
+8)
+A=Both
+B=Child
+C=Parent
+D=Never Executes
+
+9)
+Input:	./fork
+Output: Starting program; process has pid 10074
+	Section A;  pid 10074
+        Section A;  pid 10075
+	Section C
+	Section B
+	Section B done sleeping
+	Section C done sleeping
+Input: 	ps -p 9527 9528 -o user= -o pid= -o ppid= -o state= -o ucmd= --forest
+Output: mathyou9	10074	8690	S	fork
+	mathyou9	10075	10074	S	\_ fork
+Input: 	ps -p 9527 9528 -o user= -o pid= -o ppid= -o state= -o ucmd= --forest
+Output: mathyou9	10074	8690	S	fork
+	mathyou9	10075	10074	Z	\_ fork <defunct>
+
+10)
+Similarities: the top result is exactly the same (parent)
+Differences: the child has a zombie state and is marked as defunct
+
+11)
+waitpid(pid,0,0) at section c at the beginning
+
+12)
+Input:	./fork
+Output:	Starting program; process has pid 12676
+	Section A;  pid 12676
+	Section A;  pid 12677
+	Section C
+	Section B
+	Section C done sleeping
+	Section B done sleeping
+Input: 	ps -p 12676,12677 -o user= -o pid= -o ppid= -o state= -o ucmd= --forest
+Output:	mathyou9 12676  8690 S fork
+	mathyou9 12677 12676 S  \_ fork
+Input: 	ps -p 12676,12677 -o user= -o pid= -o ppid= -o state= -o ucmd= --forest
+Output: mathyou9 12677     1 S fork
+
+13)
+Similarities: the username and pid are the same for the child
+Differences: the parent is removed because it has finished, and the forest option doesnt have anything noting the parent. The ppid has also changed
+
+14)
+Input:	cat fork-output.txt
+Output:	BEFORE FORK
+	SECTION A
+	SECTION A
+	SECTION B
+	SECTION C
+
+15)
+They both execute section A at nearly the same time, and then the child executes Section B, and then the parent executes Section C
+
+16)
+Input:	./fork
+Output:
+	Starting program; process has pid 30943
+	Section A;  pid 30943
+	Section A;  pid 30944
+	Section B
+	Section B done sleeping
+	Section C
+	Section C done sleeping
+	hello from Section B
+
+17)
+Input: echo foobar | ./fork /bin/cat
+	Starting program; process has pid 31852
+	Section A;  pid 31852
+	Section A;  pid 31853
+	Section B
+	Section B done sleeping
+	Program "./fork" has pid 31853. Sleeping.
+	Running exec of "/bin/cat"
+	foobar
+	Section C
+	Section C done sleeping
+
+18)
+Input:	echo foobar | ./fork /bin/cat
+Output:	Starting program; process has pid 2323
+	Section A;  pid 2323
+	Section A;  pid 2324
+	Section B
+	Section B done sleeping
+	Program "./fork" has pid 2324. Sleeping.
+	Running exec of "/bin/cat"
+	Section C
+	Section C done sleeping
+Input:	cat fork-output.txt
+Output:
+	BEFORE FORK
+	SECTION A
+	SECTION A
+	SECTION B
+	foobar
+	SECTION C
