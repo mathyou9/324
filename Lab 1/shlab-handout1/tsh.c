@@ -125,25 +125,25 @@ void eval(char *cmdline)
     if (!builtin_cmd(arguments))
     {
 
-        // if (pipe(p) < 0)
-        // {
-        //     exit(1);
-        // }
         int commands[MAXARGS];
         int comNum;
         int stdin_redir[100];
         int stdout_redir[100];
         comNum = parseargs(arguments, commands, stdin_redir, stdout_redir);
-        // create pipe here
-        // dont open pipe yet
         // Create variable int for read end pipe
+        int p[2];
+        int in = 0;
         int comIndex = 0;
         pid_t pid = 0;
         pid_t groupID = 0;
-
         while (comIndex < comNum)
         {
             //open pipe
+            if (pipe(p) < 0)
+            {
+                exit(1);
+            }
+
             char *tempArguments[30];
             int indexO = commands[comIndex];
             int pIndex = 0;
@@ -156,6 +156,7 @@ void eval(char *cmdline)
             tempArguments[pIndex] = (char *)0;
             //printf("%s", tempArguments[0]);
             //printf("%s", arguments[stdout_redir[comIndex]]);
+
             if ((pid = fork()) < 0)
             {
                 printf("fork error");
@@ -163,34 +164,67 @@ void eval(char *cmdline)
             // printf("im here");
             if (pid == 0)
             {
+                // close(p[0]);
+                // close(p[1]);
+                //------------------CHILD-----------------------
+                if (comIndex != comNum - 1)
+                {
+                    dup2(p[1], STDOUT_FILENO);
+                    close(p[1]);
+                }
+                if (comIndex != 0)
+                {
+                    dup2(in, STDIN_FILENO);
+                    close(in);
+                }
                 if (stdout_redir[comIndex] > 0)
                 {
                     // printf("%s", arguments[stdin_redir[comIndex]]);
+
                     FILE *file;
                     file = fopen(arguments[stdout_redir[comIndex]], "w");
                     dup2(fileno(file), STDOUT_FILENO);
+                    // dup2(in, 0);
                     fclose(file);
+                    // close(in);
                 }
                 if (stdin_redir[comIndex] > 0)
                 {
                     // printf("%s", arguments[stdin_redir[comIndex]]);
+
                     FILE *file;
                     file = fopen(arguments[stdin_redir[comIndex]], "r");
                     dup2(fileno(file), STDIN_FILENO);
+                    // dup2(p[1], 1);
                     fclose(file);
+                    // close(p[1]);
                 }
                 execve(tempArguments[0], tempArguments, NULL);
                 exit(0);
             }
             else
             {
+                //------------------PARENT-----------------------
+                //save pipe from last commands pipe
+                // lastPipe[0] = p[0];
+
                 if (comIndex == 0)
                 {
                     groupID = pid;
+                    //close(p[1]);
                 }
+                close(p[1]);
+                // close(in);
+                in = p[0];
                 setpgid(pid, groupID);
-                //waitpid(pid, 0, 0);
+                // waitpid(pid, 0, 0);
+                // if (comIndex != comNum - 1)
+                // {
+                // close(p[0]);
+                // close(p[1]);
+                // }
             }
+
             while (waitpid(-1, 0, WNOHANG))
             {
             };
