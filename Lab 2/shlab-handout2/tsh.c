@@ -188,7 +188,11 @@ void eval(char *cmdline)
         sigaddset(&maskOne, SIGCHLD);
 
         sigprocmask(SIG_BLOCK, &maskOne, &prevOne);
-
+        printf("here");
+        if ((pid = fork()) < 0)
+        {
+            printf("fork error");
+        }
         if (pid == 0)
         {
             setpgid(0, 0);
@@ -197,22 +201,18 @@ void eval(char *cmdline)
             execve(arguments[0], arguments, NULL);
             exit(0);
         }
+        sigprocmask(SIG_BLOCK, &maskAll, NULL);
+        if (bg)
+        {
+            addjob(jobs, pid, getpgid(pid), BG, cmdline);
+            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+            sigprocmask(SIG_SETMASK, &prevOne, NULL);
+        }
         else
         {
-            sigprocmask(SIG_BLOCK, &maskAll, NULL);
-
-            if (bg)
-            {
-                addjob(jobs, pid, getpgid(pid), BG, cmdline);
-                printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
-                sigprocmask(SIG_SETMASK, &prevOne, NULL);
-            }
-            else
-            {
-                addjob(jobs, pid, getpgid(pid), FG, cmdline);
-                sigprocmask(SIG_SETMASK, &prevOne, NULL);
-                waitfg(pid);
-            }
+            addjob(jobs, pid, getpgid(pid), FG, cmdline);
+            sigprocmask(SIG_SETMASK, &prevOne, NULL);
+            waitfg(pid);
         }
     }
     return;
@@ -429,9 +429,7 @@ void sigchld_handler(int sig)
         // If process terminated normally or by ctrl-c
         else if (WIFSIGNALED(status))
         {
-            {
-                printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid), pid);
-            }
+            printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid), pid);
             deletejob(jobs, pid);
         }
     }
