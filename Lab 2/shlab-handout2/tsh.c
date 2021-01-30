@@ -199,6 +199,7 @@ void eval(char *cmdline)
 
             sigprocmask(SIG_SETMASK, &prevOne, NULL);
             execve(arguments[0], arguments, NULL);
+            printf("%s: Command not found\n", arguments[0]);
             exit(0);
         }
         sigprocmask(SIG_BLOCK, &maskAll, NULL);
@@ -381,6 +382,11 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv)
 {
+    if (argv[1] == NULL)
+    {
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
+        return;
+    }
     if (!strcmp(argv[0], "fg"))
     {
         if (argv[1][0] == '%')
@@ -388,18 +394,33 @@ void do_bgfg(char **argv)
             //printf("symbol")
             int jid = atoi(&argv[1][1]);
             struct job_t *jobID = getjobjid(jobs, jid);
+            if (jobID == NULL)
+            {
+                printf("%s: No such job\n", argv[1]);
+                return;
+            }
             jobID->state = FG;
             kill(-(jobID->pid), SIGCONT);
             waitfg(jobID->pid);
         }
-        else
+        else if (atoi(argv[1]))
         {
             //printf("int");
             int pid = atoi(argv[1]);
             struct job_t *jobID = getjobpid(jobs, pid);
+            if (jobID == NULL)
+            {
+                printf("%s: No such process\n", argv[1]);
+                return;
+            }
             jobID->state = FG;
             kill(-pid, SIGCONT);
             waitfg(jobID->pid);
+        }
+        else
+        {
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
         }
         return;
     }
@@ -412,7 +433,7 @@ void do_bgfg(char **argv)
             struct job_t *jobID = getjobjid(jobs, jid);
             if (jobID == NULL)
             {
-                printf("doesnt exits");
+                printf("%s: No such job\n", argv[1]);
                 return;
             }
             jobID->state = BG;
@@ -421,15 +442,25 @@ void do_bgfg(char **argv)
             // printf("%d", num);
             // int jid = atoi();
         }
-        else
+        else if (atoi(argv[1]))
         {
             //printf("int");
             int pid = atoi(argv[1]);
             struct job_t *jobID = getjobpid(jobs, pid);
+            if (jobID == NULL)
+            {
+                printf("%s: No such process\n", argv[1]);
+                return;
+            }
             jobID->state = BG;
             kill(-pid, SIGCONT);
             printf("[%d] (%d) %s\n", pid2jid(pid), pid, jobID->cmdline);
             //printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(pid), pid);
+        }
+        else
+        {
+            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+            return;
         }
     }
     return;
