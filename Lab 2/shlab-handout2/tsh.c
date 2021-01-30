@@ -188,7 +188,7 @@ void eval(char *cmdline)
         sigaddset(&maskOne, SIGCHLD);
 
         sigprocmask(SIG_BLOCK, &maskOne, &prevOne);
-        printf("here");
+        // printf("here");
         if ((pid = fork()) < 0)
         {
             printf("fork error");
@@ -381,6 +381,57 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv)
 {
+    if (!strcmp(argv[0], "fg"))
+    {
+        if (argv[1][0] == '%')
+        {
+            //printf("symbol")
+            int jid = atoi(&argv[1][1]);
+            struct job_t *jobID = getjobjid(jobs, jid);
+            jobID->state = FG;
+            kill(-(jobID->pid), SIGCONT);
+            waitfg(jobID->pid);
+        }
+        else
+        {
+            //printf("int");
+            int pid = atoi(argv[1]);
+            struct job_t *jobID = getjobpid(jobs, pid);
+            jobID->state = FG;
+            kill(-pid, SIGCONT);
+            waitfg(jobID->pid);
+        }
+        return;
+    }
+    else
+    {
+        if (argv[1][0] == '%')
+        {
+            //printf("symbol")
+            int jid = atoi(&argv[1][1]);
+            struct job_t *jobID = getjobjid(jobs, jid);
+            if (jobID == NULL)
+            {
+                printf("doesnt exits");
+                return;
+            }
+            jobID->state = BG;
+            kill(-(jobID->pid), SIGCONT);
+            printf("[%d] (%d) %s", jobID->jid, jobID->pid, jobID->cmdline);
+            // printf("%d", num);
+            // int jid = atoi();
+        }
+        else
+        {
+            //printf("int");
+            int pid = atoi(argv[1]);
+            struct job_t *jobID = getjobpid(jobs, pid);
+            jobID->state = BG;
+            kill(-pid, SIGCONT);
+            printf("[%d] (%d) %s\n", pid2jid(pid), pid, jobID->cmdline);
+            //printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(pid), pid);
+        }
+    }
     return;
 }
 
@@ -432,10 +483,14 @@ void sigchld_handler(int sig)
             printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid), pid);
             deletejob(jobs, pid);
         }
+        else
+        {
+            deletejob(jobs, pid);
+        }
+        // Unblock signals
+        sigprocmask(SIG_SETMASK, &prev, NULL);
     }
 
-    // Unblock signals
-    sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
 
