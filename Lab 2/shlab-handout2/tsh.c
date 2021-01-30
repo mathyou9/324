@@ -396,7 +396,7 @@ void do_bgfg(char **argv)
             struct job_t *jobID = getjobjid(jobs, jid);
             if (jobID == NULL)
             {
-                printf("%s: No such job\n", argv[1]);
+                printf("(%s): No such job\n", argv[1]);
                 return;
             }
             jobID->state = FG;
@@ -433,7 +433,7 @@ void do_bgfg(char **argv)
             struct job_t *jobID = getjobjid(jobs, jid);
             if (jobID == NULL)
             {
-                printf("%s: No such job\n", argv[1]);
+                printf("(%s): No such job\n", argv[1]);
                 return;
             }
             jobID->state = BG;
