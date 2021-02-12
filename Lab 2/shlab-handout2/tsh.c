@@ -196,7 +196,6 @@ void eval(char *cmdline)
         if (pid == 0)
         {
             setpgid(0, 0);
-
             sigprocmask(SIG_SETMASK, &prevOne, NULL);
             execve(arguments[0], arguments, NULL);
             printf("%s: Command not found\n", arguments[0]);
@@ -387,82 +386,49 @@ void do_bgfg(char **argv)
         printf("%s command requires PID or %%jobid argument\n", argv[0]);
         return;
     }
-    if (!strcmp(argv[0], "fg"))
+    if (argv[1][0] == '%')
     {
-        if (argv[1][0] == '%')
+        int jid = atoi(&argv[1][1]);
+        struct job_t *jobID = getjobjid(jobs, jid);
+        if (jobID == NULL)
         {
-            //printf("symbol")
-            int jid = atoi(&argv[1][1]);
-            struct job_t *jobID = getjobjid(jobs, jid);
-            if (jobID == NULL)
-            {
-                printf("%s: No such job\n", argv[1]);
-                return;
-            }
+            printf("%s: No such job\n", argv[1]);
+            return;
+        }
+        if (!strcmp(argv[0], "fg"))
+        {
             jobID->state = FG;
             kill(-(jobID->pid), SIGCONT);
             waitfg(jobID->pid);
+            return;
         }
-        else if (atoi(argv[1]))
+        jobID->state = BG;
+        kill(-(jobID->pid), SIGCONT);
+        printf("[%d] (%d) %s", jobID->jid, jobID->pid, jobID->cmdline);
+        return;
+    } 
+    else if (atoi(argv[1]))
+    {
+        int pid = atoi(argv[1]);
+        struct job_t *jobID = getjobpid(jobs, pid);
+        if (jobID == NULL)
         {
-            //printf("int");
-            int pid = atoi(argv[1]);
-            struct job_t *jobID = getjobpid(jobs, pid);
-            if (jobID == NULL)
-            {
-                printf("(%s): No such process\n", argv[1]);
-                return;
-            }
+            printf("(%s): No such process\n", argv[1]);
+            return;
+        }
+        if (!strcmp(argv[0], "fg"))
+        {
             jobID->state = FG;
             kill(-pid, SIGCONT);
             waitfg(jobID->pid);
-        }
-        else
-        {
-            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
             return;
         }
+        jobID->state = BG;
+        kill(-pid, SIGCONT);
+        printf("[%d] (%d) %s\n", pid2jid(pid), pid, jobID->cmdline);
         return;
     }
-    else
-    {
-        if (argv[1][0] == '%')
-        {
-            //printf("symbol")
-            int jid = atoi(&argv[1][1]);
-            struct job_t *jobID = getjobjid(jobs, jid);
-            if (jobID == NULL)
-            {
-                printf("%s: No such job\n", argv[1]);
-                return;
-            }
-            jobID->state = BG;
-            kill(-(jobID->pid), SIGCONT);
-            printf("[%d] (%d) %s", jobID->jid, jobID->pid, jobID->cmdline);
-            // printf("%d", num);
-            // int jid = atoi();
-        }
-        else if (atoi(argv[1]))
-        {
-            //printf("int");
-            int pid = atoi(argv[1]);
-            struct job_t *jobID = getjobpid(jobs, pid);
-            if (jobID == NULL)
-            {
-                printf("(%s): No such process\n", argv[1]);
-                return;
-            }
-            jobID->state = BG;
-            kill(-pid, SIGCONT);
-            printf("[%d] (%d) %s\n", pid2jid(pid), pid, jobID->cmdline);
-            //printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(pid), pid);
-        }
-        else
-        {
-            printf("%s: argument must be a PID or %%jobid\n", argv[0]);
-            return;
-        }
-    }
+    printf("%s: argument must be a PID or %%jobid\n", argv[0]);
     return;
 }
 
@@ -471,8 +437,7 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    while (pid == fgpid(jobs))
-    {
+    while (pid == fgpid(jobs)) {
         sleep(1);
     }
     return;
@@ -494,21 +459,15 @@ void sigchld_handler(int sig)
     sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
-
     int status, pid;
     while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0)
     {
-
-        // If ctrl-z was pressed
         if (WIFSTOPPED(status))
         {
-            //figure out how to reformat.
             printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(pid), pid);
             struct job_t *jobpid = getjobpid(jobs, pid);
             jobpid->state = ST;
-            //(getjobpid(jobs, pid))->state = ST;
         }
-        // If process terminated normally or by ctrl-c
         else if (WIFSIGNALED(status))
         {
             printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid), pid);
@@ -518,10 +477,8 @@ void sigchld_handler(int sig)
         {
             deletejob(jobs, pid);
         }
-        // Unblock signals
         sigprocmask(SIG_SETMASK, &prev, NULL);
     }
-
     return;
 }
 
@@ -535,10 +492,8 @@ void sigint_handler(int sig)
     sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
-
     pid_t pid = fgpid(jobs);
     kill(-pid, sig);
-
     sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
@@ -553,13 +508,8 @@ void sigtstp_handler(int sig)
     sigset_t mask, prev;
     sigfillset(&mask);
     sigprocmask(SIG_BLOCK, &mask, &prev);
-
     pid_t pid = fgpid(jobs);
-    if (pid)
-    {
-        kill(-pid, sig);
-    }
-
+    if (pid) kill(-pid, sig);
     sigprocmask(SIG_SETMASK, &prev, NULL);
     return;
 }
