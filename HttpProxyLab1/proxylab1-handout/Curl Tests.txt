@@ -1,0 +1,11 @@
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET localhost:6000
+
+curl -v --proxy http://localhost:4000 http://localhost:15213/home.html
+
+curl --max-time 10 --proxy http://localhost:4000 http://localhost:15213/home.html
+
+curl --max-time 10 --proxy http://localhost:4000 http://localhost:15213/tiny.c
+
+curl --max-time 10 --silent --proxy http://localhost:4000 http://localhost:15213/csapp.c
+
+curl --max-time 10 --silent --proxy http://localhost:4000 --output ./tests/tinyc-2 http://localhost:15213/tiny.c
